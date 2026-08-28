@@ -56,7 +56,7 @@ async def test_chat_service_accepts_any_llm_provider_shaped_object() -> None:
     """
     service = ChatService(provider=_EchoProvider())
     messages = [MessageSchema(role="user", content="ping")]
-    reply = await service.chat(messages)
+    reply = await service.chat(messages, user_id="test_user")
     assert reply.reply == "ping"
     assert reply.conversation_id is not None
 
@@ -73,7 +73,7 @@ async def test_chat_service_translates_schema_to_internal_message() -> None:
     await service.chat([
         MessageSchema(role="system", content="You are Mili."),
         MessageSchema(role="user", content="Hello"),
-    ])
+    ], user_id="test_user")
 
     assert len(inspector.received) == 2
     assert all(isinstance(m, Message) for m in inspector.received)
@@ -93,7 +93,7 @@ async def test_chat_service_propagates_llm_provider_error() -> None:
 
     service = ChatService(provider=_ProviderErrorProvider())
     with pytest.raises(LLMProviderError, match="Upstream failure"):
-        await service.chat([MessageSchema(role="user", content="Hi")])
+        await service.chat([MessageSchema(role="user", content="Hi")], user_id="test_user")
 
 
 @pytest.mark.asyncio
@@ -104,15 +104,15 @@ async def test_chat_service_wraps_unexpected_exceptions_in_llm_error() -> None:
     """
     service = ChatService(provider=_BrokenProvider())
     with pytest.raises(LLMError):
-        await service.chat([MessageSchema(role="user", content="Hi")])
+        await service.chat([MessageSchema(role="user", content="Hi")], user_id="test_user")
 
 
 @pytest.mark.asyncio
 async def test_chat_service_is_stateless_across_calls() -> None:
     """Each call to chat() is independent — no shared mutable state."""
     service = ChatService(provider=_EchoProvider())
-    r1 = await service.chat([MessageSchema(role="user", content="first")])
-    r2 = await service.chat([MessageSchema(role="user", content="second")])
+    r1 = await service.chat([MessageSchema(role="user", content="first")], user_id="test_user")
+    r2 = await service.chat([MessageSchema(role="user", content="second")], user_id="test_user")
     assert r1.reply == "first"
     assert r2.reply == "second"
     assert r1.conversation_id != r2.conversation_id
@@ -136,9 +136,9 @@ async def test_chat_service_injects_personal_memory() -> None:
     
     service = ChatService(provider=provider, personal_memory_service=pm_service)
     
-    await service.chat([MessageSchema(role="user", content="Hi")])
+    await service.chat([MessageSchema(role="user", content="Hi")], user_id="explicit_test_user")
     
-    pm_service.get_memories.assert_called_once_with(user_id="default_user", limit=10)
+    pm_service.get_memories.assert_called_once_with(user_id="explicit_test_user", limit=10)
     
     context_passed = provider.chat.call_args[0][0]
     assert len(context_passed) == 2

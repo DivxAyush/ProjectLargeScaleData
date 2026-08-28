@@ -53,16 +53,16 @@ class ChatService:
     async def chat(
         self,
         messages: list[MessageSchema],
+        user_id: str,
         conversation_id: str | None = None,
-        user_id: str = "default_user",
     ) -> ChatResult:
         """
         Process a chat request and return the assistant's reply.
 
         Args:
             messages: Ordered conversation history from the HTTP request.
+            user_id: The ID of the current user, resolved externally.
             conversation_id: Optional ID of the conversation to load memory for.
-            user_id: The ID of the current user. Defaults to "default_user" if not provided.
 
         Returns:
             ChatResult containing the reply and conversation ID.

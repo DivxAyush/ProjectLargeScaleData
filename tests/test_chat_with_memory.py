@@ -23,7 +23,7 @@ def chat_service_with_memory(mock_provider, memory_service):
 async def test_chat_with_memory_creates_new_conversation(chat_service_with_memory, fake_repository):
     messages = [MessageSchema(role="user", content="Hello!")]
     
-    result = await chat_service_with_memory.chat(messages, conversation_id=None)
+    result = await chat_service_with_memory.chat(messages, conversation_id=None, user_id="test_user")
     
     assert result.reply == MockLLMProvider.FIXED_REPLY
     assert result.conversation_id is not None
@@ -49,7 +49,7 @@ async def test_chat_with_memory_uses_existing_conversation(chat_service_with_mem
     )
     
     messages = [MessageSchema(role="user", content="Second turn")]
-    result = await chat_service_with_memory.chat(messages, conversation_id="conv123")
+    result = await chat_service_with_memory.chat(messages, conversation_id="conv123", user_id="test_user")
     
     assert result.conversation_id == "conv123"
     
@@ -70,4 +70,4 @@ async def test_chat_with_memory_raises_memory_error(mock_provider):
     service = ChatService(provider=mock_provider, memory_service=ThrowingMemoryService())
     
     with pytest.raises(MemoryStorageError):
-        await service.chat([MessageSchema(role="user", content="Hi")])
+        await service.chat([MessageSchema(role="user", content="Hi")], user_id="test_user")
