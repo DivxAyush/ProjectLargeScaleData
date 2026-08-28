@@ -81,8 +81,5 @@ class MemoryService:
         )
 
         logger.debug("Saving turn for conversation %s", conversation_id)
-        # In a real app we might run these concurrently or in a transaction.
-        # For V1.1, sequential saves are sufficient.
-        await self._repository.save_message(user_stored)
-        await self._repository.save_message(assistant_stored)
-        await self._repository.update_conversation_timestamp(conversation_id)
+        # Atomically save messages and update conversation timestamp
+        await self._repository.save_turn(conversation_id, [user_stored, assistant_stored])

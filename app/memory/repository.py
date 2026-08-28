@@ -15,6 +15,10 @@ class ConversationRepository(Protocol):
     Abstract persistence interface for conversations and their messages.
     """
 
+    async def initialize(self) -> None:
+        """Perform one-time initialization (e.g., creating indexes)."""
+        ...
+
     async def create_conversation(
         self, conversation_id: str, metadata: dict | None = None
     ) -> Conversation:
@@ -33,8 +37,12 @@ class ConversationRepository(Protocol):
         """Update the updated_at timestamp of a conversation."""
         ...
 
-    async def save_message(self, message: StoredMessage) -> None:
-        """Persist a single message in the conversation."""
+    async def save_turn(
+        self, conversation_id: str, messages: list[StoredMessage]
+    ) -> None:
+        """
+        Atomically persist multiple messages and update the conversation timestamp.
+        """
         ...
 
     async def get_messages(

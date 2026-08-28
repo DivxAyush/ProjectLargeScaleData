@@ -102,6 +102,9 @@ class FakeConversationRepository:
         self.conversations: dict[str, Conversation] = {}
         self.messages: list[StoredMessage] = []
 
+    async def initialize(self) -> None:
+        pass
+
     async def create_conversation(
         self, conversation_id: str, metadata: dict | None = None
     ) -> Conversation:
@@ -122,8 +125,9 @@ class FakeConversationRepository:
         if conversation_id in self.conversations:
             self.conversations[conversation_id].updated_at = datetime.now(timezone.utc)
 
-    async def save_message(self, message: StoredMessage) -> None:
-        self.messages.append(message)
+    async def save_turn(self, conversation_id: str, messages: list[StoredMessage]) -> None:
+        self.messages.extend(messages)
+        await self.update_conversation_timestamp(conversation_id)
 
     async def get_messages(self, conversation_id: str) -> list[StoredMessage]:
         msgs = [m for m in self.messages if m.conversation_id == conversation_id]

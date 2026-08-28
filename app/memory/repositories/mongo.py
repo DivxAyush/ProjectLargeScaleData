@@ -27,26 +27,22 @@ class MongoConversationRepository:
         self._db = db
         self._conversations = db["conversations"]
         self._messages = db["messages"]
-        self._indexes_created = False
 
-    async def _ensure_indexes(self) -> None:
-        if not self._indexes_created:
-            try:
-                await self._conversations.create_index([("created_at", ASCENDING)])
-                await self._messages.create_index(
-                    [("conversation_id", ASCENDING), ("created_at", ASCENDING)]
-                )
-                self._indexes_created = True
-            except PyMongoError as exc:
-                logger.error("Failed to create MongoDB indexes: %s", exc)
-                # We don't raise here; missing indexes shouldn't block inserts,
-                # but it will log the error.
-                pass
+    async def initialize(self) -> None:
+        """Create required indexes. Must be called at startup."""
+        try:
+            await self._conversations.create_index([("created_at", ASCENDING)])
+            await self._messages.create_index(
+                [("conversation_id", ASCENDING), ("created_at", ASCENDING)]
+            )
+        except PyMongoError as exc:
+            # We don't swallow the error anymore. Propagate as MemoryStorageError.
+            logger.error("Failed to create MongoDB indexes: %s", exc)
+            raise MemoryStorageError(f"Failed to create indexes: {exc}") from exc
 
     async def create_conversation(
         self, conversation_id: str, metadata: dict | None = None
     ) -> Conversation:
-        await self._ensure_indexes()
         now = datetime.now(timezone.utc)
         doc = {
             "_id": conversation_id,
@@ -88,20 +84,34 @@ class MongoConversationRepository:
         except PyMongoError as exc:
             raise MemoryStorageError(f"Failed to update timestamp: {exc}") from exc
 
-    async def save_message(self, message: StoredMessage) -> None:
-        await self._ensure_indexes()
-        doc = {
-            "_id": message.message_id,
-            "conversation_id": message.conversation_id,
-            "role": message.role,
-            "content": message.content,
-            "created_at": message.created_at,
-            "metadata": message.metadata or {},
-        }
+    async def save_turn(
+        self, conversation_id: str, messages: list[StoredMessage]
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        docs = [
+            {
+                "_id": msg.message_id,
+                "conversation_id": msg.conversation_id,
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at,
+                "metadata": msg.metadata or {},
+            }
+            for msg in messages
+        ]
+        
+        client = self._db.client
         try:
-            await self._messages.insert_one(doc)
+            async with await client.start_session() as session:
+                async with session.start_transaction():
+                    await self._messages.insert_many(docs, session=session)
+                    await self._conversations.update_one(
+                        {"_id": conversation_id},
+                        {"$set": {"updated_at": now}},
+                        session=session,
+                    )
         except PyMongoError as exc:
-            raise MemoryStorageError(f"Failed to save message: {exc}") from exc
+            raise MemoryStorageError(f"Failed to atomically save turn: {exc}") from exc
 
     async def get_messages(self, conversation_id: str) -> list[StoredMessage]:
         try:
