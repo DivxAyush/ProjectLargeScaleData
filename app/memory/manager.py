@@ -113,10 +113,10 @@ class MemoryManager:
             parsed_json = json.loads(clean_output.strip())
             return MemoryDecisionSchema(**parsed_json)
         except json.JSONDecodeError as e:
-            logger.warning("Failed to parse JSON from memory LLM: %s | output: %s", e, raw_output)
+            logger.warning("MemoryDecision validation failed: json_decode_error")
             return None
         except ValidationError as e:
-            logger.warning("MemoryDecision validation failed: %s | output: %s", e, raw_output)
+            logger.warning("MemoryDecision validation failed: invalid_schema")
             return None
 
     async def _execute_decision(

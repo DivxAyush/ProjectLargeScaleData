@@ -183,3 +183,22 @@ async def test_manager_handles_schema_failure(manager, fake_llm, fake_pm_service
     fake_llm.mock_reply = json.dumps({"action": "INVALID", "confidence": 99.0})
     await manager.evaluate_turn("u1", "Mili, yaad rakhna")
     fake_pm_service.create_memory.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_manager_does_not_log_raw_output_on_json_error(manager, fake_llm, fake_pm_service, caplog):
+    fake_llm.mock_reply = "I am not JSON user_secret_content"
+    await manager.evaluate_turn("u1", "Mili, yaad rakhna")
+    
+    for record in caplog.records:
+        assert "user_secret_content" not in record.message
+        assert "I am not JSON" not in record.message
+        assert "MemoryDecision validation failed: json_decode_error" in record.message
+
+@pytest.mark.asyncio
+async def test_manager_does_not_log_raw_output_on_schema_error(manager, fake_llm, fake_pm_service, caplog):
+    fake_llm.mock_reply = json.dumps({"action": "INVALID", "confidence": 99.0, "content": "secret_memory"})
+    await manager.evaluate_turn("u1", "Mili, yaad rakhna")
+    
+    for record in caplog.records:
+        assert "secret_memory" not in record.message
+        assert "MemoryDecision validation failed: invalid_schema" in record.message
