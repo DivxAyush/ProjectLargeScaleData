@@ -108,6 +108,14 @@ def get_personal_memory_service() -> PersonalMemoryService:
     return _personal_memory_service
 
 
+def get_current_user_id() -> str:
+    """
+    FastAPI dependency that provides the current user's ID.
+    In V1.2, this is hardcoded to 'default_user' as authentication is not yet built.
+    """
+    return "default_user"
+
+
 def get_chat_service() -> ChatService:
     """
     FastAPI dependency that provides a ChatService instance.

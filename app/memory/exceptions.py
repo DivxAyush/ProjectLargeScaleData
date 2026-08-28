@@ -19,6 +19,11 @@ class PersonalMemoryNotFoundError(MemoryError):
     pass
 
 
+class MemorySourceRejectedError(MemoryError):
+    """Raised when a memory source is explicitly rejected for persistence (e.g., model_suggested)."""
+    pass
+
+
 class MemoryStorageError(MemoryError):
     """Raised when there is a failure to read/write from the underlying storage."""
     pass

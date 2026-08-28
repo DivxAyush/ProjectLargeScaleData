@@ -63,3 +63,15 @@ async def test_update_nonexistent_memory(pm_service):
 async def test_delete_nonexistent_memory(pm_service):
     with pytest.raises(PersonalMemoryNotFoundError):
         await pm_service.delete_memory("missing")
+
+@pytest.mark.asyncio
+async def test_reject_model_suggested(pm_service):
+    from app.memory.exceptions import MemorySourceRejectedError
+    with pytest.raises(MemorySourceRejectedError, match="cannot be automatically persisted"):
+        await pm_service.create_memory(
+            user_id="u1",
+            memory_type="preference",
+            key="diet",
+            content="vegan",
+            source="model_suggested",
+        )

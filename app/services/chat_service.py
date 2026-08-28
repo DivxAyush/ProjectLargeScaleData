@@ -54,6 +54,7 @@ class ChatService:
         self,
         messages: list[MessageSchema],
         conversation_id: str | None = None,
+        user_id: str = "default_user",
     ) -> ChatResult:
         """
         Process a chat request and return the assistant's reply.
@@ -61,6 +62,7 @@ class ChatService:
         Args:
             messages: Ordered conversation history from the HTTP request.
             conversation_id: Optional ID of the conversation to load memory for.
+            user_id: The ID of the current user. Defaults to "default_user" if not provided.
 
         Returns:
             ChatResult containing the reply and conversation ID.
@@ -96,8 +98,6 @@ class ChatService:
 
         # 3. Inject Personal Memory if configured
         if self._personal_memory_service:
-            # Multi-tenancy not yet implemented; using default_user
-            user_id = "default_user"
             personal_memories = await self._personal_memory_service.get_memories(user_id=user_id, limit=10)
             
             if personal_memories:

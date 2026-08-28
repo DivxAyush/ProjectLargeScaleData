@@ -16,7 +16,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.dependencies import get_chat_service
+from app.dependencies import get_chat_service, get_current_user_id
 from app.llm.exceptions import LLMConfigurationError, LLMError
 from app.memory.exceptions import MemoryError
 from app.schemas.chat import ChatRequest, ChatResponse
@@ -39,6 +39,7 @@ async def chat(
     request: Request,
     body: ChatRequest,
     service: ChatService = Depends(get_chat_service),
+    user_id: str = Depends(get_current_user_id),
 ) -> ChatResponse:
     """
     POST /api/chat
@@ -51,7 +52,11 @@ async def chat(
     logger.info("Chat request received (messages=%d)", len(body.messages))
 
     try:
-        result = await service.chat(body.messages, conversation_id=body.conversation_id)
+        result = await service.chat(
+            body.messages, 
+            conversation_id=body.conversation_id,
+            user_id=user_id,
+        )
     except MemoryError as exc:
         logger.error("Memory persistence error: %s", exc)
         raise HTTPException(

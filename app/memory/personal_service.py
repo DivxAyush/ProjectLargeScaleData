@@ -27,8 +27,9 @@ class PersonalMemoryService:
         should generally not be persisted automatically in V1.2.
         """
         if source == "model_suggested":
-            # For V1.2, we enforce a strict log and do not automatically accept without explicit validation
-            logger.info("Handling model_suggested memory creation for user %s", user_id)
+            from app.memory.exceptions import MemorySourceRejectedError
+            logger.warning("Rejected persistence of model_suggested memory for user %s", user_id)
+            raise MemorySourceRejectedError("model_suggested memories cannot be automatically persisted in V1.2")
             
         memory_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
