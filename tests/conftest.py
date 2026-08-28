@@ -18,7 +18,9 @@ from app.llm.exceptions import LLMProviderError
 from app.main import app
 from app.dependencies import get_chat_service
 from app.services.chat_service import ChatService
-from app.memory.models import Conversation, StoredMessage
+from app.memory.models import Conversation, StoredMessage, ChatResult
+from app.memory.personal_models import PersonalMemory
+from app.services.chat_service import ChatService
 from app.memory.service import MemoryService
 from datetime import datetime, timezone
 
@@ -132,6 +134,46 @@ class FakeConversationRepository:
     async def get_messages(self, conversation_id: str) -> list[StoredMessage]:
         msgs = [m for m in self.messages if m.conversation_id == conversation_id]
         return sorted(msgs, key=lambda x: x.created_at)
+
+
+class FakePersonalMemoryRepository:
+    def __init__(self) -> None:
+        self.memories: dict[str, PersonalMemory] = {}
+
+    async def initialize(self) -> None:
+        pass
+
+    async def create_memory(self, memory: PersonalMemory) -> None:
+        self.memories[memory.memory_id] = memory
+
+    async def update_memory(self, memory_id: str, content: str, confidence: float | None = None) -> None:
+        if memory_id not in self.memories:
+            from app.memory.exceptions import PersonalMemoryNotFoundError
+            raise PersonalMemoryNotFoundError(f"Not found: {memory_id}")
+        self.memories[memory_id].content = content
+        if confidence is not None:
+            self.memories[memory_id].confidence = confidence
+        self.memories[memory_id].updated_at = datetime.now(timezone.utc)
+
+    async def delete_memory(self, memory_id: str) -> None:
+        if memory_id not in self.memories:
+            from app.memory.exceptions import PersonalMemoryNotFoundError
+            raise PersonalMemoryNotFoundError(f"Not found: {memory_id}")
+        del self.memories[memory_id]
+
+    async def get_memories(
+        self, user_id: str, memory_type: str | None = None, limit: int = 10
+    ) -> list[PersonalMemory]:
+        results = [
+            m for m in self.memories.values()
+            if m.user_id == user_id and (memory_type is None or m.memory_type == memory_type)
+        ]
+        results.sort(key=lambda x: x.updated_at, reverse=True)
+        return results[:limit]
+
+@pytest.fixture
+def fake_personal_repo():
+    return FakePersonalMemoryRepository()
 
 
 @pytest.fixture

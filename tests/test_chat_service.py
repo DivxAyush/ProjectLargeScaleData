@@ -116,3 +116,33 @@ async def test_chat_service_is_stateless_across_calls() -> None:
     assert r1.reply == "first"
     assert r2.reply == "second"
     assert r1.conversation_id != r2.conversation_id
+
+@pytest.mark.asyncio
+async def test_chat_service_injects_personal_memory() -> None:
+    from unittest.mock import MagicMock, AsyncMock
+    from app.memory.personal_models import PersonalMemory
+    
+    provider = MagicMock()
+    provider.chat = AsyncMock(return_value="Reply")
+    
+    pm_service = AsyncMock()
+    pm_service.get_memories.return_value = [
+        PersonalMemory(
+            memory_id="1", user_id="u", memory_type="preference", key="diet",
+            content="I am vegan", source="explicit_user", confidence=1.0,
+            created_at=None, updated_at=None
+        )
+    ]
+    
+    service = ChatService(provider=provider, personal_memory_service=pm_service)
+    
+    await service.chat([MessageSchema(role="user", content="Hi")])
+    
+    pm_service.get_memories.assert_called_once_with(user_id="default_user", limit=10)
+    
+    context_passed = provider.chat.call_args[0][0]
+    assert len(context_passed) == 2
+    assert context_passed[0].role == "system"
+    assert "<personal_memory>" in context_passed[0].content
+    assert "- I am vegan" in context_passed[0].content
+    assert context_passed[1].role == "user"

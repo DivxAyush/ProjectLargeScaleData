@@ -44,9 +44,11 @@ class ChatService:
         self,
         provider: LLMProvider,
         memory_service: "MemoryService | None" = None,
+        personal_memory_service: "PersonalMemoryService | None" = None,
     ) -> None:
         self._provider = provider
         self._memory_service = memory_service
+        self._personal_memory_service = personal_memory_service
 
     async def chat(
         self,
@@ -92,7 +94,26 @@ class ChatService:
                 import uuid
                 resolved_conversation_id = str(uuid.uuid4())
 
-        # 3. Append the new messages
+        # 3. Inject Personal Memory if configured
+        if self._personal_memory_service:
+            # Multi-tenancy not yet implemented; using default_user
+            user_id = "default_user"
+            personal_memories = await self._personal_memory_service.get_memories(user_id=user_id, limit=10)
+            
+            if personal_memories:
+                memory_lines = ["<personal_memory>"]
+                for pm in personal_memories:
+                    memory_lines.append(f"- {pm.content}")
+                memory_lines.append("</personal_memory>")
+                
+                system_message = Message(role="system", content="\n".join(memory_lines))
+                # Insert personal memory at the start of context, but after any existing system prompt
+                if full_context and full_context[0].role == "system":
+                    full_context.insert(1, system_message)
+                else:
+                    full_context.insert(0, system_message)
+
+        # 4. Append the new messages
         full_context.extend(new_messages)
 
         logger.info("Sending %d message(s) to provider", len(full_context))

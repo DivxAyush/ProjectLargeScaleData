@@ -23,6 +23,9 @@ from app.llm.factory import create_llm_provider
 from app.memory.repository import ConversationRepository
 from app.memory.repositories.mongo import MongoConversationRepository
 from app.memory.service import MemoryService
+from app.memory.personal_repository import PersonalMemoryRepository
+from app.memory.repositories.personal_mongo import MongoPersonalMemoryRepository
+from app.memory.personal_service import PersonalMemoryService
 from app.services.chat_service import ChatService
 
 # Module-level singletons
@@ -30,6 +33,8 @@ _llm_provider: LLMProvider | None = None
 _mongo_client: MongoDBClient | None = None
 _conversation_repository: ConversationRepository | None = None
 _memory_service: MemoryService | None = None
+_personal_memory_repository: PersonalMemoryRepository | None = None
+_personal_memory_service: PersonalMemoryService | None = None
 
 
 def get_llm_provider() -> LLMProvider:
@@ -80,11 +85,38 @@ def get_memory_service() -> MemoryService:
     return _memory_service
 
 
+def get_personal_memory_repository() -> PersonalMemoryRepository:
+    """
+    Create and cache the PersonalMemoryRepository.
+    """
+    global _personal_memory_repository
+    if _personal_memory_repository is None:
+        client = get_mongo_client()
+        db = client.get_database()
+        _personal_memory_repository = MongoPersonalMemoryRepository(db)
+    return _personal_memory_repository
+
+
+def get_personal_memory_service() -> PersonalMemoryService:
+    """
+    Create and cache the PersonalMemoryService.
+    """
+    global _personal_memory_service
+    if _personal_memory_service is None:
+        repo = get_personal_memory_repository()
+        _personal_memory_service = PersonalMemoryService(repository=repo)
+    return _personal_memory_service
+
+
 def get_chat_service() -> ChatService:
     """
     FastAPI dependency that provides a ChatService instance.
     """
     provider = get_llm_provider()
     memory_service = get_memory_service()
-    return ChatService(provider=provider, memory_service=memory_service)
-
+    personal_memory_service = get_personal_memory_service()
+    return ChatService(
+        provider=provider, 
+        memory_service=memory_service,
+        personal_memory_service=personal_memory_service
+    )

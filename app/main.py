@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     errors (e.g. missing API key) surface immediately with a clear log
     message rather than as a 500 on the first chat request.
     """
-    from app.dependencies import get_llm_provider, get_mongo_client, get_conversation_repository  # noqa: PLC0415
+    from app.dependencies import get_llm_provider, get_mongo_client, get_conversation_repository, get_personal_memory_repository  # noqa: PLC0415
 
     try:
         get_llm_provider()
@@ -49,8 +49,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await mongo_client.connect()
         # Ensure indexes are created at startup
-        repo = get_conversation_repository()
-        await repo.initialize()
+        conv_repo = get_conversation_repository()
+        await conv_repo.initialize()
+        
+        pm_repo = get_personal_memory_repository()
+        await pm_repo.initialize()
     except Exception as exc:
         # Do not log the exception string directly if it might contain the URI.
         # PyMongo errors generally don't leak the URI, but we log safely.

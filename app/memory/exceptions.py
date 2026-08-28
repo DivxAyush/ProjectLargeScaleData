@@ -10,7 +10,12 @@ class MemoryError(Exception):
 
 
 class ConversationNotFoundError(MemoryError):
-    """Raised when a requested conversation ID does not exist."""
+    """Raised when a conversation cannot be found."""
+    pass
+
+
+class PersonalMemoryNotFoundError(MemoryError):
+    """Raised when a personal memory cannot be found by ID."""
     pass
 
 
