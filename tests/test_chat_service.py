@@ -57,7 +57,8 @@ async def test_chat_service_accepts_any_llm_provider_shaped_object() -> None:
     service = ChatService(provider=_EchoProvider())
     messages = [MessageSchema(role="user", content="ping")]
     reply = await service.chat(messages)
-    assert reply == "ping"
+    assert reply.reply == "ping"
+    assert reply.conversation_id is not None
 
 
 @pytest.mark.asyncio
@@ -112,5 +113,6 @@ async def test_chat_service_is_stateless_across_calls() -> None:
     service = ChatService(provider=_EchoProvider())
     r1 = await service.chat([MessageSchema(role="user", content="first")])
     r2 = await service.chat([MessageSchema(role="user", content="second")])
-    assert r1 == "first"
-    assert r2 == "second"
+    assert r1.reply == "first"
+    assert r2.reply == "second"
+    assert r1.conversation_id != r2.conversation_id

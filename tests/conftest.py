@@ -18,6 +18,9 @@ from app.llm.exceptions import LLMProviderError
 from app.main import app
 from app.dependencies import get_chat_service
 from app.services.chat_service import ChatService
+from app.memory.models import Conversation, StoredMessage
+from app.memory.service import MemoryService
+from datetime import datetime, timezone
 
 
 # ── Mock providers ────────────────────────────────────────────────────────────
@@ -90,3 +93,48 @@ async def failing_client(failing_chat_service: ChatService) -> AsyncClient:
     ) as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+# ── Memory Mock ───────────────────────────────────────────────────────────────
+
+class FakeConversationRepository:
+    def __init__(self) -> None:
+        self.conversations: dict[str, Conversation] = {}
+        self.messages: list[StoredMessage] = []
+
+    async def create_conversation(
+        self, conversation_id: str, metadata: dict | None = None
+    ) -> Conversation:
+        now = datetime.now(timezone.utc)
+        conv = Conversation(
+            conversation_id=conversation_id,
+            created_at=now,
+            updated_at=now,
+            metadata=metadata or {},
+        )
+        self.conversations[conversation_id] = conv
+        return conv
+
+    async def get_conversation(self, conversation_id: str) -> Conversation | None:
+        return self.conversations.get(conversation_id)
+
+    async def update_conversation_timestamp(self, conversation_id: str) -> None:
+        if conversation_id in self.conversations:
+            self.conversations[conversation_id].updated_at = datetime.now(timezone.utc)
+
+    async def save_message(self, message: StoredMessage) -> None:
+        self.messages.append(message)
+
+    async def get_messages(self, conversation_id: str) -> list[StoredMessage]:
+        msgs = [m for m in self.messages if m.conversation_id == conversation_id]
+        return sorted(msgs, key=lambda x: x.created_at)
+
+
+@pytest.fixture
+def fake_repository() -> FakeConversationRepository:
+    return FakeConversationRepository()
+
+
+@pytest.fixture
+def memory_service(fake_repository: FakeConversationRepository) -> MemoryService:
+    return MemoryService(repository=fake_repository)

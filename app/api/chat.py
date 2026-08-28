@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.dependencies import get_chat_service
 from app.llm.exceptions import LLMConfigurationError, LLMError
+from app.memory.exceptions import MemoryError
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.chat_service import ChatService
 
@@ -50,7 +51,17 @@ async def chat(
     logger.info("Chat request received (messages=%d)", len(body.messages))
 
     try:
-        reply = await service.chat(body.messages)
+        result = await service.chat(body.messages, conversation_id=body.conversation_id)
+    except MemoryError as exc:
+        logger.error("Memory persistence error: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "memory_storage_error",
+                "message": "Failed to persist conversation memory",
+                "request_id": request_id,
+            },
+        ) from exc
     except LLMConfigurationError as exc:
         logger.error("LLM not configured: %s", exc)
         raise HTTPException(
@@ -72,4 +83,8 @@ async def chat(
             },
         ) from exc
 
-    return ChatResponse(reply=reply, request_id=request_id)
+    return ChatResponse(
+        reply=result.reply,
+        request_id=request_id,
+        conversation_id=result.conversation_id,
+    )

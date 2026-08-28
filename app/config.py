@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_version: str = "0.1.0"
 
+    # ── MongoDB ──────────────────────────────────────────────────────────────
+    mongodb_uri: str = "mongodb://localhost:27017"
+    mongodb_db_name: str = "mili"
+
+
     # ── LLM provider selection ───────────────────────────────────────────────
     # Changing this value (plus providing the corresponding API key) is all
     # that is needed to switch providers. The rest of the application is

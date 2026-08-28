@@ -35,6 +35,10 @@ class ChatRequest(BaseModel):
         min_length=1,
         description="Ordered conversation history. Must contain at least one message.",
     )
+    conversation_id: str | None = Field(
+        None,
+        description="Optional ID of the conversation. If omitted, a new conversation is started.",
+    )
 
 
 class ChatResponse(BaseModel):
@@ -44,4 +48,8 @@ class ChatResponse(BaseModel):
     request_id: str = Field(
         ...,
         description="Correlation ID for this request. Matches the X-Request-ID header.",
+    )
+    conversation_id: str = Field(
+        ...,
+        description="ID of the conversation. Will match the request if provided.",
     )

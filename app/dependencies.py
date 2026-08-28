@@ -17,21 +17,24 @@ Design:
 """
 
 from app.config import get_settings
+from app.db.mongodb import MongoDBClient
 from app.llm.base import LLMProvider
 from app.llm.factory import create_llm_provider
+from app.memory.repository import ConversationRepository
+from app.memory.repositories.mongo import MongoConversationRepository
+from app.memory.service import MemoryService
 from app.services.chat_service import ChatService
 
-# Module-level singleton — set on first successful initialisation.
+# Module-level singletons
 _llm_provider: LLMProvider | None = None
+_mongo_client: MongoDBClient | None = None
+_conversation_repository: ConversationRepository | None = None
+_memory_service: MemoryService | None = None
 
 
 def get_llm_provider() -> LLMProvider:
     """
     Create and cache the configured LLM provider.
-
-    Only caches a successfully created provider. If provider creation fails
-    (e.g. missing API key), the next call will try again rather than
-    permanently returning the cached failure.
     """
     global _llm_provider
     if _llm_provider is None:
@@ -40,14 +43,48 @@ def get_llm_provider() -> LLMProvider:
     return _llm_provider
 
 
+def get_mongo_client() -> MongoDBClient:
+    """
+    Create and cache the MongoDB client.
+    """
+    global _mongo_client
+    if _mongo_client is None:
+        settings = get_settings()
+        _mongo_client = MongoDBClient(
+            uri=settings.mongodb_uri,
+            db_name=settings.mongodb_db_name,
+        )
+    return _mongo_client
+
+
+def get_conversation_repository() -> ConversationRepository:
+    """
+    Create and cache the ConversationRepository.
+    """
+    global _conversation_repository
+    if _conversation_repository is None:
+        client = get_mongo_client()
+        db = client.get_database()
+        _conversation_repository = MongoConversationRepository(db)
+    return _conversation_repository
+
+
+def get_memory_service() -> MemoryService:
+    """
+    Create and cache the MemoryService.
+    """
+    global _memory_service
+    if _memory_service is None:
+        repo = get_conversation_repository()
+        _memory_service = MemoryService(repository=repo)
+    return _memory_service
+
+
 def get_chat_service() -> ChatService:
     """
     FastAPI dependency that provides a ChatService instance.
-
-    The provider is resolved once (cached); a new ChatService wrapper is
-    created per request — lightweight since ChatService is stateless in v0.1.
-    In future versions this may inject memory/context per-session.
     """
     provider = get_llm_provider()
-    return ChatService(provider=provider)
+    memory_service = get_memory_service()
+    return ChatService(provider=provider, memory_service=memory_service)
 

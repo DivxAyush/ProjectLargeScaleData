@@ -32,7 +32,9 @@ async def test_chat_response_schema(client: AsyncClient) -> None:
     body = response.json()
     assert "reply" in body
     assert "request_id" in body
+    assert "conversation_id" in body
     assert body["reply"] == MockLLMProvider.FIXED_REPLY
+    assert body["conversation_id"] is not None
 
 
 @pytest.mark.asyncio

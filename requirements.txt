@@ -3,6 +3,7 @@ fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 pydantic-settings>=2.2.0
 python-dotenv>=1.0.0
+pymongo>=4.10.0
 
 # ── LLM Providers ────────────────────────────────────────────────────────────
 # NOTE: google-generativeai is deprecated/EOL as of Aug 31 2025.

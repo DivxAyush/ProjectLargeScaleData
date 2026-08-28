@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     errors (e.g. missing API key) surface immediately with a clear log
     message rather than as a 500 on the first chat request.
     """
-    from app.dependencies import get_llm_provider  # noqa: PLC0415
+    from app.dependencies import get_llm_provider, get_mongo_client  # noqa: PLC0415
 
     try:
         get_llm_provider()
@@ -45,7 +45,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # We log and continue; the app will still serve /health and return
         # a clean error on /chat rather than crashing uvicorn.
 
+    mongo_client = get_mongo_client()
+    try:
+        await mongo_client.connect()
+    except Exception as exc:
+        logger.error("Failed to connect to MongoDB during startup: %s", exc)
+
     yield  # Application runs here
+
+    await mongo_client.close()
 
 
 def create_app() -> FastAPI:
