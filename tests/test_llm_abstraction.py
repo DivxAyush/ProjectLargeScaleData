@@ -8,6 +8,7 @@ These tests prove:
   2. Message is a correct, immutable dataclass.
   3. The factory raises LLMConfigurationError for unknown providers.
   4. The exception hierarchy is correct.
+  5. The configured default Gemini model is the current stable production model.
 """
 
 import pytest
@@ -111,3 +112,29 @@ def test_llm_provider_error_chains_cause() -> None:
         raise wrapped from original
     except LLMProviderError as exc:
         assert exc.__cause__ is original
+
+
+# ── Model configuration test ──────────────────────────────────────────────────
+
+# The current stable production Gemini model.
+# Update this constant (and config.py) when Google releases a new stable model.
+# gemini-2.0-flash was shut down June 1, 2026.
+EXPECTED_DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
+
+
+def test_default_gemini_model_is_current_stable() -> None:
+    """
+    Verify that the configured default Gemini model is the expected current
+    stable production model.
+
+    This test exists to make model changes explicit and visible in CI —
+    updating the default in config.py without updating this constant will
+    cause a deliberate failure, requiring a conscious sign-off.
+    """
+    settings = Settings()
+    assert settings.gemini_model == EXPECTED_DEFAULT_GEMINI_MODEL, (
+        f"Default Gemini model is '{settings.gemini_model}', "
+        f"expected '{EXPECTED_DEFAULT_GEMINI_MODEL}'. "
+        f"If the model was intentionally updated, also update "
+        f"EXPECTED_DEFAULT_GEMINI_MODEL in this test and .env.example."
+    )
