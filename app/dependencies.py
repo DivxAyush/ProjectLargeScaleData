@@ -24,9 +24,12 @@ from app.memory.repository import ConversationRepository
 from app.memory.repositories.mongo import MongoConversationRepository
 from app.memory.service import MemoryService
 from app.memory.personal_repository import PersonalMemoryRepository
-from app.memory.repositories.personal_mongo import MongoPersonalMemoryRepository
 from app.memory.personal_service import PersonalMemoryService
+from app.memory.repositories.personal_mongo import MongoPersonalMemoryRepository
 from app.services.chat_service import ChatService
+from app.memory.manager import MemoryManager
+from app.memory.dispatcher import MemoryTaskDispatcher, FastAPIMemoryDispatcher
+from fastapi import BackgroundTasks
 
 # Module-level singletons
 _llm_provider: LLMProvider | None = None
@@ -106,6 +109,20 @@ def get_personal_memory_service() -> PersonalMemoryService:
         repo = get_personal_memory_repository()
         _personal_memory_service = PersonalMemoryService(repository=repo)
     return _personal_memory_service
+
+_memory_manager: MemoryManager | None = None
+
+def get_memory_manager() -> MemoryManager:
+    global _memory_manager
+    if _memory_manager is None:
+        llm = get_llm_provider()
+        pm_service = get_personal_memory_service()
+        _memory_manager = MemoryManager(llm_provider=llm, personal_memory_service=pm_service)
+    return _memory_manager
+
+def get_memory_dispatcher(background_tasks: BackgroundTasks) -> MemoryTaskDispatcher:
+    manager = get_memory_manager()
+    return FastAPIMemoryDispatcher(background_tasks=background_tasks, memory_manager=manager)
 
 
 def get_current_user_id() -> str:

@@ -14,9 +14,10 @@ provider classes. Route logic is intentionally thin.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 
-from app.dependencies import get_chat_service, get_current_user_id
+from app.dependencies import get_chat_service, get_current_user_id, get_memory_dispatcher
+from app.memory.dispatcher import MemoryTaskDispatcher
 from app.llm.exceptions import LLMConfigurationError, LLMError
 from app.memory.exceptions import MemoryError
 from app.schemas.chat import ChatRequest, ChatResponse
@@ -40,6 +41,7 @@ async def chat(
     body: ChatRequest,
     service: ChatService = Depends(get_chat_service),
     user_id: str = Depends(get_current_user_id),
+    dispatcher: MemoryTaskDispatcher = Depends(get_memory_dispatcher),
 ) -> ChatResponse:
     """
     POST /api/chat
@@ -87,6 +89,10 @@ async def chat(
                 "request_id": request_id,
             },
         ) from exc
+
+    # Enqueue memory evaluation for the latest user message
+    if body.messages and body.messages[-1].role == "user":
+        dispatcher.dispatch(user_id=user_id, message=body.messages[-1].content)
 
     return ChatResponse(
         reply=result.reply,

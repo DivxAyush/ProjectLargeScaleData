@@ -78,7 +78,11 @@ async def client(chat_service: ChatService) -> AsyncClient:
     Async test client with the real ChatService dependency overridden.
     No API key or network call required.
     """
+    from app.dependencies import get_memory_dispatcher
+    class MockDispatcher:
+        def dispatch(self, user_id, message): pass
     app.dependency_overrides[get_chat_service] = lambda: chat_service
+    app.dependency_overrides[get_memory_dispatcher] = lambda: MockDispatcher()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
@@ -89,7 +93,11 @@ async def client(chat_service: ChatService) -> AsyncClient:
 @pytest.fixture
 async def failing_client(failing_chat_service: ChatService) -> AsyncClient:
     """Test client that uses a provider that always fails."""
+    from app.dependencies import get_memory_dispatcher
+    class MockDispatcher:
+        def dispatch(self, user_id, message): pass
     app.dependency_overrides[get_chat_service] = lambda: failing_chat_service
+    app.dependency_overrides[get_memory_dispatcher] = lambda: MockDispatcher()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
