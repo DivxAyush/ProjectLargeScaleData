@@ -125,7 +125,7 @@ class ChatService:
             raise
         except Exception as exc:
             # Unexpected error from the provider — wrap it.
-            logger.exception("Unexpected error from LLM provider")
+            logger.error("Unexpected error from LLM provider: %s", type(exc).__name__)
             raise LLMError(f"Unexpected provider error: {exc}") from exc
 
         logger.info("Provider returned reply (%d chars)", len(reply))

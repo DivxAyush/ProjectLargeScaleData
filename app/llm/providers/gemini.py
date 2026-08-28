@@ -97,5 +97,5 @@ class GeminiProvider:
 
         except Exception as exc:
             # Wrap SDK-specific exception so it never leaks upward.
-            logger.error("Gemini API call failed: %s", exc)
+            logger.error("Gemini API call failed: %s", type(exc).__name__)
             raise LLMProviderError(f"Gemini request failed: {exc}") from exc

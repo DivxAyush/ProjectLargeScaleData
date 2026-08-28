@@ -62,7 +62,7 @@ class MemoryManager:
             llm_result = await self._provider.chat([Message(role="user", content=prompt)])
             raw_output = llm_result.reply
         except Exception as e:
-            logger.error("LLM failure during memory evaluation: %s", e)
+            logger.error("LLM failure during memory evaluation: %s", type(e).__name__)
             return
 
         # 4. JSON parsing and Pydantic validation
@@ -172,4 +172,4 @@ class MemoryManager:
                     return
                 await self._pm_service.delete_memory(memory_id=decision.target_memory_id)
         except Exception as e:
-            logger.error("Failed to execute memory decision: %s", e)
+            logger.error("Failed to execute memory decision: %s", type(e).__name__)

@@ -60,7 +60,7 @@ async def chat(
             user_id=user_id,
         )
     except MemoryError as exc:
-        logger.error("Memory persistence error: %s", exc)
+        logger.error("Memory persistence error: %s", type(exc).__name__)
         raise HTTPException(
             status_code=503,
             detail={
@@ -80,7 +80,7 @@ async def chat(
             },
         ) from exc
     except LLMError as exc:
-        logger.error("LLM error during chat: %s", exc)
+        logger.error("LLM error during chat: %s", type(exc).__name__)
         raise HTTPException(
             status_code=502,
             detail={
